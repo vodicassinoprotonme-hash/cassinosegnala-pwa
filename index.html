@@ -7,7 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <script>
     (function() {
-      emailjs.init("6VxVl_B4TIrK1YGJA"); // 🔑 La tua PUBLIC KEY EmailJS
+      emailjs.init("6VxVl_B4TIrK1YGJA"); // Public Key
     })();
   </script>
   <style>
@@ -15,9 +15,10 @@
       font-family: Arial, sans-serif;
       margin: 20px;
       line-height: 1.6;
+      background: #f3f4f6;
     }
     h1 {
-      color: #222;
+      color: #111827;
       text-align: center;
     }
     form {
@@ -26,12 +27,14 @@
       padding: 20px;
       border: 1px solid #ccc;
       border-radius: 8px;
-      background: #f9f9f9;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
     label {
       display: block;
       margin-top: 10px;
       font-weight: bold;
+      color: #374151;
     }
     input, textarea, button {
       width: 100%;
@@ -41,26 +44,20 @@
       border: 1px solid #ccc;
       font-size: 14px;
     }
+    textarea { min-height: 100px; }
     button {
-      background-color: #007bff;
+      background-color: #2563eb;
       color: white;
       border: none;
       cursor: pointer;
       margin-top: 15px;
+      font-weight: bold;
     }
     button:hover {
-      background-color: #0056b3;
+      background-color: #1e40af;
     }
-    .success {
-      color: green;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .error {
-      color: red;
-      font-weight: bold;
-      margin-top: 10px;
-    }
+    .success { color: green; font-weight: bold; margin-top: 10px; }
+    .error { color: red; font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -71,43 +68,57 @@
     <input type="text" id="name" name="name" required />
 
     <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required />
+    <input type="email" id="email" name="reply_to" required />
 
     <label for="message">Messaggio:</label>
     <textarea id="message" name="message" required></textarea>
 
     <label for="latitude">Latitudine:</label>
-    <input type="text" id="latitude" name="latitude" />
+    <input type="text" id="latitude" name="lat" readonly />
 
     <label for="longitude">Longitudine:</label>
-    <input type="text" id="longitude" name="longitude" />
+    <input type="text" id="longitude" name="lng" readonly />
+
+    <button type="button" onclick="getLocation()">📍 Ottieni posizione</button>
 
     <label for="file">Allega immagine:</label>
-    <input type="file" id="file" name="file" />
+    <input type="file" id="file" name="my_file" />
 
     <button type="submit">Invia</button>
     <p id="response"></p>
   </form>
 
   <script>
-    document
-      .getElementById("segnalazione-form")
-      .addEventListener("submit", function (e) {
-        e.preventDefault();
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            document.getElementById("latitude").value = position.coords.latitude.toFixed(6);
+            document.getElementById("longitude").value = position.coords.longitude.toFixed(6);
+          },
+          function(error) {
+            alert("Impossibile ottenere la posizione: " + error.message);
+          }
+        );
+      } else {
+        alert("La geolocalizzazione non è supportata dal tuo browser.");
+      }
+    }
 
-        emailjs
-          .sendForm("service_o0zjt3a", "w0dg37s", this) // ⚠️ Sostituisci con il tuo SERVICE ID e TEMPLATE ID
-          .then(
-            function () {
-              document.getElementById("response").innerHTML =
-                "<span class='success'>✅ Segnalazione inviata con successo!</span>";
-            },
-            function (error) {
-              document.getElementById("response").innerHTML =
-                "<span class='error'>❌ Errore nell'invio: " + JSON.stringify(error) + "</span>";
-            }
-          );
-      });
+    document.getElementById("segnalazione-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      emailjs.sendForm("service_o0zjt3a", "w0dg37s", this).then(
+        function () {
+          document.getElementById("response").innerHTML =
+            "<span class='success'>✅ Segnalazione inviata con successo!</span>";
+        },
+        function (error) {
+          document.getElementById("response").innerHTML =
+            "<span class='error'>❌ Errore nell'invio: " + JSON.stringify(error) + "</span>";
+        }
+      );
+    });
   </script>
 </body>
 </html>
