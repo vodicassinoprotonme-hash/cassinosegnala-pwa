@@ -1,52 +1,295 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CassinoSignal - Segnalazioni</title>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@2/dist/email.min.js"></script>
-  <script type="text/javascript">
-    (function() {
-      emailjs.init("LA_TUA_PUBLIC_KEY"); // <-- qui la tua Public Key di EmailJS
-    })();
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CassinoSignal</title>
 
-    function sendEmail(e) {
-      e.preventDefault();
+  <!-- Leaflet (mappa senza API key) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-o9N1j7kGStb7bZ2sXch0ZKKLkGFs7C9gHkGZ1F0iPAA="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o8EeH1PrlJ8V+H6f3XkF7bPq0d8Qb3S3gN9gCbg0PpI="
+    crossorigin=""
+  ></script>
 
-      emailjs.sendForm("service_o0zjt3a", "w0dg37s", e.target)
-        .then(() => {
-          alert("✅ Segnalazione inviata con successo!");
-        }, (error) => {
-          alert("❌ Errore nell'invio: " + JSON.stringify(error));
-        });
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+  <style>
+    :root{
+      --primary:#2563eb;
+      --bg:#0b0c10;
+      --panel:#111316;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --accent:#22c55e;
+      --danger:#ef4444;
+      --card:#171a1f;
+      --shadow:0 10px 25px rgba(0,0,0,.35);
     }
-  </script>
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:#0b0c10;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    header{
+      position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0e1116,#0b0c10);
+      padding:16px 20px;border-bottom:1px solid #1f242b
+    }
+    header h1{margin:0;font-size:20px;letter-spacing:.4px}
+    main{padding:14px 14px 76px}
+    .section{display:none;animation:fade .25s ease}
+    .section.active{display:block}
+    @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    /* Cards */
+    .grid{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:12px}
+    @media(min-width:640px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(min-width:960px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    .card{background:var(--card);border:1px solid #1f242b;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .muted{color:var(--muted)}
+    .tag{background:#1f2937;color:#cbd5e1;font-size:12px;border-radius:999px;padding:4px 10px}
+    .stars{color:#fbbf24}
+    .btn{
+      background:var(--primary);border:0;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer
+    }
+    .btn.secondary{background:#1f2937}
+    .btn.success{background:var(--accent)}
+    .btn.block{width:100%}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+
+    /* Form */
+    label{display:block;margin:12px 0 6px}
+    input,textarea{
+      width:100%;background:#0f1115;border:1px solid #1f242b;border-radius:10px;color:var(--text);
+      padding:10px 12px
+    }
+    textarea{min-height:110px;resize:vertical}
+
+    /* Map */
+    #map{height:420px;border-radius:14px;border:1px solid #1f242b;box-shadow:var(--shadow)}
+
+    /* Bottom nav */
+    .nav{
+      position:fixed;left:0;right:0;bottom:0;z-index:6;background:#0f1115;border-top:1px solid #1f242b;
+      display:flex;gap:6px;padding:6px 8px
+    }
+    .nav button{
+      flex:1;background:transparent;border:0;color:var(--muted);padding:8px 6px;border-radius:10px
+    }
+    .nav button.active{color:#fff;background:#17202a}
+  </style>
 </head>
 <body>
-  <h2>Invia una Segnalazione</h2>
-  <form onsubmit="sendEmail(event)">
-    <label>Nome:</label><br>
-    <input type="text" name="name" required><br><br>
+  <header>
+    <h1>CassinoSignal</h1>
+  </header>
 
-    <label>Email:</label><br>
-    <input type="email" name="reply_to" required><br><br>
+  <main>
+    <!-- DOVE MANGIARE -->
+    <section id="mangiare" class="section active">
+      <div class="row" style="margin-bottom:10px">
+        <h2 style="margin:0">Dove Mangiare</h2>
+        <button id="sortFood" class="btn secondary" title="Ordina per recensioni">Ordina</button>
+      </div>
+      <div id="listFood" class="grid"></div>
+    </section>
 
-    <label>Messaggio:</label><br>
-    <textarea name="message" required></textarea><br><br>
+    <!-- DOVE ACQUISTARE -->
+    <section id="acquistare" class="section">
+      <div class="row" style="margin-bottom:10px">
+        <h2 style="margin:0">Dove Acquistare</h2>
+        <button id="sortShop" class="btn secondary" title="Ordina per recensioni">Ordina</button>
+      </div>
+      <div id="listShop" class="grid"></div>
+    </section>
 
-    <label>Latitudine:</label><br>
-    <input type="text" name="lat"><br><br>
+    <!-- SEGNALAZIONI -->
+    <section id="segnalazioni" class="section">
+      <h2>Invia una Segnalazione</h2>
+      <form id="reportForm">
+        <label>Nome</label>
+        <input name="name" required />
 
-    <label>Longitudine:</label><br>
-    <input type="text" name="lng"><br><br>
+        <label>Email</label>
+        <input type="email" name="reply_to" required />
 
-    <label>Allega immagine:</label><br>
-    <input type="file" name="my_file"><br><br>
+        <label>Messaggio</label>
+        <textarea name="message" required></textarea>
 
-    <!-- Destinatario fisso -->
-    <input type="hidden" name="to_email" value="vodicassinoproton.me@gmail.com" />
+        <div class="row">
+          <div style="flex:1">
+            <label>Latitudine</label>
+            <input name="lat" id="lat" />
+          </div>
+          <div style="flex:1">
+            <label>Longitudine</label>
+            <input name="lng" id="lng" />
+          </div>
+        </div>
 
-    <button type="submit">Invia</button>
-  </form>
+        <label>Allega immagine (opzionale)</label>
+        <input type="file" name="my_file" accept="image/*" />
+
+        <!-- tuo destinatario fisso -->
+        <input type="hidden" name="to_email" value="vodicassinoproton.me@gmail.com" />
+
+        <div class="row" style="margin-top:12px">
+          <button type="button" id="geoBtn" class="btn secondary">📍 Ottieni posizione</button>
+          <button type="submit" class="btn success">Invia</button>
+        </div>
+        <p id="formMsg" class="muted"></p>
+      </form>
+    </section>
+
+    <!-- MAPPA -->
+    <section id="mappa" class="section">
+      <h2>Mappa</h2>
+      <div id="map"></div>
+      <p class="muted" style="margin-top:8px">Tocca un marker per aprire la sezione relativa.</p>
+    </section>
+  </main>
+
+  <!-- Bottom navigation -->
+  <nav class="nav">
+    <button data-tab="mangiare" class="active">🍝 Mangiare</button>
+    <button data-tab="acquistare">🛍️ Acquistare</button>
+    <button data-tab="segnalazioni">✉️ Segnalazioni</button>
+    <button data-tab="mappa">🗺️ Mappa</button>
+  </nav>
+
+  <script>
+    // ------------------ EmailJS init (SOSTITUISCI QUI) ------------------
+    emailjs.init("YOUR_PUBLIC_KEY"); // es: 6VxVl_B4TIrK1YGJA
+    const SERVICE_ID  = "YOUR_SERVICE_ID"; // es: service_o0zjt3a
+    const TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // es: w0dg37s
+    // --------------------------------------------------------------------
+
+    // ------------------ Dati demo ------------------
+    const food = [
+      { name:"Pizzeria Bella Napoli", rating:4.7, note:"Pizza e cucina napoletana", lat:41.489,  lng:13.833 },
+      { name:"Ristorante Da Mario",  rating:4.4, note:"Primi fatti in casa",      lat:41.4882, lng:13.8315 },
+      { name:"Trattoria Il Mulino",  rating:3.8, note:"Piatti tipici ciociari",   lat:41.4867, lng:13.829 },
+      { name:"La Tavola del Re",     rating:4.9, note:"Gourmet e degustazioni",   lat:41.4889, lng:13.8325 },
+      { name:"Osteria Antica",       rating:4.4, note:"Atmosfera familiare",      lat:41.4876, lng:13.8303 },
+    ];
+    const shops = [
+      { name:"Cartoleria Centro", rating:4.6, note:"Scuola e ufficio",          lat:41.488,  lng:13.8289 },
+      { name:"Libreria Moderna",  rating:4.2, note:"Libri e riviste",           lat:41.4872, lng:13.8322 },
+      { name:"Emporio Digitale",  rating:4.8, note:"Elettronica e accessori",   lat:41.486,  lng:13.829 },
+      { name:"Boutique Cassino",  rating:4.1, note:"Abbigliamento elegante",    lat:41.4869, lng:13.8333 },
+      { name:"ElettroCasa",       rating:3.9, note:"Elettrodomestici e casa",   lat:41.4884, lng:13.8311 },
+    ];
+
+    // --------------- Helpers UI ---------------
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
+    const star = v => "★".repeat(Math.round(v)) + "☆".repeat(5 - Math.round(v));
+
+    function renderList(arr, el){
+      el.innerHTML = "";
+      arr.forEach(x=>{
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="row"><strong>${x.name}</strong><span class="tag">${x.rating.toFixed(1)}</span></div>
+          <div class="stars" style="margin:6px 0">${star(x.rating)}</div>
+          <div class="muted">${x.note}</div>
+        `;
+        el.appendChild(card);
+      });
+    }
+
+    // render iniziale
+    renderList(food, $("#listFood"));
+    renderList(shops, $("#listShop"));
+
+    // Ordinamento
+    let ascFood=false, ascShop=false;
+    $("#sortFood").addEventListener("click", ()=>{
+      ascFood=!ascFood;
+      const s=[...food].sort((a,b)=> ascFood? a.rating-b.rating : b.rating-a.rating);
+      renderList(s,$("#listFood"));
+    });
+    $("#sortShop").addEventListener("click", ()=>{
+      ascShop=!ascShop;
+      const s=[...shops].sort((a,b)=> ascShop? a.rating-b.rating : b.rating-a.rating);
+      renderList(s,$("#listShop"));
+    });
+
+    // --------------- Tabs ---------------
+    $$(".nav button").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const tab = btn.dataset.tab;
+        $$(".nav button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        $$(".section").forEach(s=>s.classList.remove("active"));
+        document.getElementById(tab).classList.add("active");
+        if(tab==="mappa") setTimeout(()=> map.invalidateSize(), 50);
+      });
+    });
+
+    // --------------- Geolocalizzazione ---------------
+    $("#geoBtn").addEventListener("click", async ()=>{
+      const msg = $("#formMsg");
+      msg.textContent = "Richiesta posizione in corso…";
+      try{
+        const pos = await new Promise((res,rej)=>{
+          navigator.geolocation.getCurrentPosition(res, rej, {enableHighAccuracy:true, timeout:10000});
+        });
+        $("#lat").value = pos.coords.latitude.toFixed(6);
+        $("#lng").value = pos.coords.longitude.toFixed(6);
+        msg.textContent = "Coordinate compilate ✅";
+      }catch(e){
+        msg.textContent = "Impossibile ottenere la posizione. Concedi i permessi di localizzazione.";
+      }
+    });
+
+    // --------------- Invio EmailJS ---------------
+    $("#reportForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const msg = $("#formMsg");
+      msg.textContent = "Invio in corso…";
+
+      try{
+        await emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, e.target);
+        msg.textContent = "Segnalazione inviata ✅ Controlla la tua posta.";
+        e.target.reset();
+      }catch(err){
+        console.error(err);
+        msg.textContent = "Errore nell'invio. Verifica chiavi/template EmailJS.";
+      }
+    });
+
+    // --------------- Mappa (Leaflet) ---------------
+    const map = L.map('map',{scrollWheelZoom:false}).setView([41.487,13.831], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19, attribution:'© OpenStreetMap'
+    }).addTo(map);
+
+    function addMarker(item, kind){
+      const icon = L.divIcon({
+        html: `<div style="background:${kind==='food'?'#ef4444':'#22c55e'};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4)"></div>`,
+        className:"", iconSize:[14,14]
+      });
+      const m = L.marker([item.lat,item.lng],{icon}).addTo(map);
+      m.bindPopup(`<strong>${item.name}</strong><br/><span class="muted">${item.note}</span><br/><button id="go-${kind}" class="btn" style="margin-top:6px">Apri sezione</button>`);
+      m.on('popupopen', ()=>{
+        const b = document.getElementById(`go-${kind}`);
+        if(!b) return;
+        b.addEventListener('click', ()=>{
+          document.querySelector(`.nav button[data-tab="${kind==='food'?'mangiare':'acquistare'}"]`).click();
+          m.closePopup();
+        }, {once:true});
+      });
+    }
+
+    food.forEach(f=>addMarker(f,'food'));
+    shops.forEach(s=>addMarker(s,'shop'));
+  </script>
 </body>
 </html>
