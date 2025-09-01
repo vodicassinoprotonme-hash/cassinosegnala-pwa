@@ -1,5 +1,4 @@
-// Service Worker basico per PWA cache-first
-const CACHE = 'cassinosignal-cache-v1';
+const CACHE = 'cassinosignal-cache-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -22,7 +21,14 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((r) => r || fetch(e.request))
-  );
+  const url = new URL(e.request.url);
+  // Cache-first solo per la nostra origin
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      caches.match(e.request).then((r) => r || fetch(e.request))
+    );
+  } else {
+    // CDN/network default
+    e.respondWith(fetch(e.request).catch(() => caches.match('./index.html')));
+  }
 });
