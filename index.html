@@ -26,6 +26,9 @@
     crossorigin=""
   ></script>
 
+  <!-- EmailJS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
   <style>
     :root { --brand:#0d6efd; --bg:#0b1220; --card:#121a2b; --text:#e9eefc; --muted:#b8c3e0; }
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -33,7 +36,7 @@
     header img{width:28px;height:28px;border-radius:6px}
     header h1{font-size:18px;margin:0}
     main{padding:16px; max-width: 900px; margin: 0 auto;}
-    .tabs{display:flex;gap:8px;margin:8px 0 16px;position:sticky;top:56px; z-index: 9;}
+    .tabs{display:flex;gap:8px;margin:8px 0 16px;position:sticky;top:56px; z-index: 9; background:transparent}
     .tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid #2a3550;background:#162038;color:var(--text);cursor:pointer}
     .tabs button.active{background:var(--brand);border-color:var(--brand)}
     .row{display:grid;grid-template-columns:1fr;gap:12px}
@@ -44,7 +47,13 @@
     .btn.ghost{background:#162038;border:1px solid #2a3550;color:var(--text)}
     .field{width:100%;border-radius:10px;padding:10px;background:#0f1626;color:var(--text);border:1px solid #24304a}
     .install{position:fixed;right:12px;bottom:12px;background:var(--brand);border:none;color:white;padding:10px 14px;border-radius:12px;box-shadow:0 6px 18px rgba(13,110,253,.35);display:none; z-index: 11;}
-    #map{height: 420px; border-radius: 14px; border:1px solid #1f2942}
+    /* Altezza mappa ottimizzata per mobile */
+    #map{
+      height: 65dvh;
+      min-height: 360px;
+      border-radius: 14px;
+      border:1px solid #1f2942
+    }
     .badge{display:inline-block;background:#203055;border:1px solid #2d3a60;color:#cfe0ff;padding:2px 8px;border-radius:999px;font-size:12px}
     ul{margin:0;padding-left:18px}
     footer{padding:30px 0 60px;text-align:center;color:#92a0c7;font-size:12px}
@@ -81,14 +90,32 @@
       <div class="card">
         <h3>Invia segnalazione</h3>
         <p class="muted">Scrivi un messaggio, opzionalmente allega una foto e aggiungi la tua posizione.</p>
-        <form id="report-form">
-          <textarea id="msg" rows="4" class="field" placeholder="Descrivi la segnalazione..."></textarea>
+        <form id="report-form" enctype="multipart/form-data">
+          <div class="row">
+            <input id="name" name="name" class="field" placeholder="Nome" required />
+            <input id="reply_to" name="reply_to" class="field" type="email" placeholder="Email" required />
+          </div>
+          <textarea id="msg" name="message" rows="4" class="field" placeholder="Descrivi la segnalazione..." required></textarea>
+          <div class="row" style="align-items:end">
+            <div>
+              <label class="muted">Latitudine</label>
+              <input id="lat" name="lat" class="field" placeholder="—" readonly />
+            </div>
+            <div>
+              <label class="muted">Longitudine</label>
+              <input id="lng" name="lng" class="field" placeholder="—" readonly />
+            </div>
+          </div>
+
           <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
-            <input type="file" id="photo" accept="image/*" class="field" style="max-width:320px" />
-            <button type="button" id="geo" class="btn ghost">Ottieni posizione</button>
+            <input type="file" id="photo" name="my_file" accept="image/*" class="field" style="max-width:320px" />
+            <button type="button" id="geo" class="btn ghost">📍 Ottieni posizione</button>
           </div>
           <div id="coords" class="muted">Posizione: non ottenuta</div>
-          <button type="submit" class="btn" style="margin-top:10px">Invia segnalazione</button>
+
+          <button type="submit" class="btn" style="margin-top:10px">✉️ Invia segnalazione</button>
+          <div id="msg-ok"  class="muted" style="display:none;margin-top:8px;color:#3fdc86">✅ Inviata!</div>
+          <div id="msg-err" class="muted" style="display:none;margin-top:8px;color:#ff7b7b">❌ Errore. Riprova.</div>
         </form>
       </div>
 
@@ -149,6 +176,15 @@
   <button id="btnInstall" class="install">Installa app</button>
 
   <script>
+    // ====== EmailJS init (usa i TUOI ID) ======
+    const SERVICE_ID  = 'service_o0zjt3a';
+    const TEMPLATE_ID = 'template_w0dg37s';
+    const PUBLIC_KEY  = '6VxVl_B4TIrK1YGJA';
+
+    window.addEventListener('load', () => {
+      if (window.emailjs && !emailjs.__inited) { emailjs.init(PUBLIC_KEY); emailjs.__inited = true; }
+    });
+
     /* ===== Storage helper ===== */
     const LS = {
       get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
@@ -183,8 +219,10 @@
         btn.classList.add('active');
         sections.forEach(s => s.hidden = (s.id !== btn.dataset.tab));
         if (btn.dataset.tab === 'mappa') {
-          // aspetta che il DOM mostri la sezione, poi (re)inizializza
-          setTimeout(() => ensureMap(), 50);
+          setTimeout(() => {
+            ensureMap();
+            document.getElementById('map')?.scrollIntoView({behavior:'smooth', block:'start'});
+          }, 50);
         }
         if (btn.dataset.tab === 'recensioni') renderReviews();
       });
@@ -205,9 +243,11 @@
     renderList('mangiare-list', mangiare);
     renderList('acquistare-list', acquistare);
 
-    /* ===== Segnalazioni ===== */
+    /* ===== Segnalazioni (posizione) ===== */
     const geoBtn = document.getElementById('geo');
     const coordsEl = document.getElementById('coords');
+    const latEl = document.getElementById('lat');
+    const lngEl = document.getElementById('lng');
     let currentCoords = null;
 
     geoBtn?.addEventListener('click', () => {
@@ -218,40 +258,57 @@
           const { latitude, longitude } = pos.coords;
           currentCoords = { lat: latitude, lng: longitude };
           coordsEl.textContent = `Posizione: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          latEl.value = latitude.toFixed(6);
+          lngEl.value = longitude.toFixed(6);
         },
         err => { coordsEl.textContent = 'Errore posizione: ' + err.message; },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     });
 
-    document.getElementById('report-form')?.addEventListener('submit', async (e) => {
+    /* ===== Segnalazioni (invio + salvataggio) ===== */
+    const reportForm = document.getElementById('report-form');
+    const okMsg = document.getElementById('msg-ok');
+    const errMsg = document.getElementById('msg-err');
+
+    reportForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      okMsg.style.display = 'none'; errMsg.style.display = 'none';
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('reply_to').value.trim();
       const msg = document.getElementById('msg').value.trim();
       const file = document.getElementById('photo').files[0];
 
-      if (!msg) { alert('Scrivi un messaggio.'); return; }
-      if (!currentCoords) { alert('Ottieni prima la posizione.'); return; }
+      if (!name || !email || !msg){ errMsg.textContent='Compila tutti i campi.'; errMsg.style.display='block'; return; }
 
+      // Salva localmente
       let photoData = null;
-      if (file) {
-        photoData = await fileToDataURL(file);
-      }
-
+      if (file) photoData = await fileToDataURL(file);
       const report = {
         id: 'rep_'+Date.now(),
-        msg, photoData,
-        lat: currentCoords.lat,
-        lng: currentCoords.lng,
+        name, email, msg, photoData,
+        lat: latEl.value ? parseFloat(latEl.value) : null,
+        lng: lngEl.value ? parseFloat(lngEl.value) : null,
         ts: Date.now()
       };
       reports.push(report);
       LS.set('reports', reports);
-      document.getElementById('report-form').reset();
-      currentCoords = null;
-      coordsEl.textContent = 'Posizione: non ottenuta';
       renderReports();
       if (map) drawMarkers();
-      alert('Segnalazione inviata!');
+
+      // Invio EmailJS tramite sendForm (allega il file)
+      try {
+        await emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, '#report-form');
+        okMsg.style.display = 'block';
+        reportForm.reset();
+        currentCoords = null;
+        coordsEl.textContent = 'Posizione: non ottenuta';
+      } catch (err) {
+        console.warn(err);
+        errMsg.textContent = 'Errore invio email. Riprova tra poco.';
+        errMsg.style.display = 'block';
+      }
     });
 
     function fileToDataURL(file){
@@ -273,8 +330,9 @@
             ${r.photoData ? `<img src="${r.photoData}" alt="foto" style="width:92px;height:92px;object-fit:cover;border-radius:10px;border:1px solid #24304a" />` : ''}
             <div>
               <div class="badge">Segnalazione</div>
-              <p style="margin:6px 0 4px">${r.msg}</p>
-              <div class="muted">${new Date(r.ts).toLocaleString()} — ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>
+              <p style="margin:6px 0 4px"><b>${r.name}</b> — ${r.email}</p>
+              <p style="margin:4px 0">${r.msg}</p>
+              <div class="muted">${new Date(r.ts).toLocaleString()}${(r.lat&&r.lng)?` — ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`:''}</div>
             </div>
           </div>
         </div>
@@ -321,12 +379,11 @@
     let map, markersLayer;
     function ensureMap(){
       const section = document.getElementById('mappa');
-      if (section.hidden) return; // ancora non visibile
+      if (section.hidden) return;
       const mapEl = document.getElementById('map');
       if (!mapEl) return;
 
       if (!map) {
-        console.log('Inizializzo Leaflet…');
         map = L.map('map', { zoomControl: true }).setView([41.487, 13.831], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -335,7 +392,6 @@
         markersLayer = L.layerGroup().addTo(map);
         drawMarkers();
       } else {
-        console.log('Aggiorno dimensioni/marker…');
         map.invalidateSize();
         drawMarkers();
       }
@@ -343,7 +399,6 @@
 
     function drawMarkers(){
       if (!markersLayer) return;
-
       markersLayer.clearLayers();
 
       // Mangiare (azzurro)
@@ -360,8 +415,10 @@
 
       // Segnalazioni (rosso)
       reports.forEach(r=>{
-        L.circleMarker([r.lat,r.lng], {radius:8, color:'#ff4d4f'}).addTo(markersLayer)
-          .bindPopup(`<b>Segnalazione</b><br/>${new Date(r.ts).toLocaleString()}<br/><span class="muted">${r.msg}</span>`);
+        if (r.lat && r.lng) {
+          L.circleMarker([r.lat,r.lng], {radius:8, color:'#ff4d4f'}).addTo(markersLayer)
+            .bindPopup(`<b>Segnalazione</b><br/>${new Date(r.ts).toLocaleString()}<br/><span class="muted">${r.msg}</span>`);
+        }
       });
     }
 
@@ -390,4 +447,3 @@
   </script>
 </body>
 </html>
-
