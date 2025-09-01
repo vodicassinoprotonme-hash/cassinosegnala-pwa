@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CassinoSignal</title>
+
+  <!-- Manifest PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0d6efd" />
+
+  <!-- Icone fallback per iOS -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <style>
+    :root { --brand:#0d6efd; --bg:#0b1220; --card:#121a2b; --text:#e9eefc; }
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;background:var(--card);display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #223}
+    header img{width:28px;height:28px;border-radius:6px}
+    header h1{font-size:18px;margin:0}
+    main{padding:16px;}
+    .tabs{display:flex;gap:8px;margin:8px 0 16px}
+    .tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid #2a3550;background:#162038;color:var(--text);cursor:pointer}
+    .tabs button.active{background:var(--brand);border-color:var(--brand)}
+    .card{background:var(--card);border:1px solid #1f2942;border-radius:14px;padding:14px;margin:10px 0}
+    .muted{color:#b8c3e0;font-size:14px}
+    .install{position:fixed;right:12px;bottom:12px;background:var(--brand);border:none;color:white;padding:10px 14px;border-radius:12px;box-shadow:0 6px 18px rgba(13,110,253,.35);display:none}
+    footer{padding:30px 0 60px;text-align:center;color:#92a0c7;font-size:12px}
+    a{color:#9ec1ff}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/icon-192.png" alt="logo" />
+    <h1>CassinoSignal</h1>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button data-tab="mangiare" class="active">Dove Mangiare</button>
+      <button data-tab="acquistare">Dove Acquistare</button>
+      <button data-tab="segnalazioni">Segnalazioni</button>
+      <button data-tab="recensioni">Recensioni</button>
+      <button data-tab="mappa">Mappa</button>
+    </div>
+
+    <!-- Contenuti -->
+    <section id="mangiare">
+      <div class="card">
+        <h3>Pizzeria Bella Napoli <span class="muted">— ★ 4.5</span></h3>
+        <p>Pizza napoletana con forno a legna.</p>
+      </div>
+      <div class="card">
+        <h3>Trattoria Da Gino <span class="muted">— ★ 4.2</span></h3>
+        <p>Cucina tipica ciociara, pasta fresca.</p>
+      </div>
+    </section>
+
+    <section id="acquistare" hidden>
+      <div class="card">
+        <h3>Emporio Digitale <span class="muted">— ★ 4.3</span></h3>
+        <p>Elettronica, telefonia e accessori.</p>
+      </div>
+      <div class="card">
+        <h3>Boutique Cassino <span class="muted">— ★ 4.1</span></h3>
+        <p>Abbigliamento e accessori.</p>
+      </div>
+    </section>
+
+    <section id="segnalazioni" hidden>
+      <div class="card">
+        <h3>Invia segnalazione</h3>
+        <p class="muted">Scrivi un messaggio e (facoltativo) allega una foto.</p>
+        <form id="report-form">
+          <textarea id="msg" rows="4" style="width:100%;border-radius:10px;padding:10px;background:#0f1626;color:var(--text);border:1px solid #24304a" placeholder="Descrivi la segnalazione..."></textarea>
+          <div style="display:flex;gap:8px;margin:10px 0">
+            <input type="file" id="photo" accept="image/*" />
+            <button type="button" id="geo" style="background:#162038;color:var(--text);border:1px solid #2a3550;border-radius:8px;padding:8px 10px;cursor:pointer">Ottieni posizione</button>
+          </div>
+          <div id="coords" class="muted">Posizione: non ottenuta</div>
+          <button type="submit" style="margin-top:10px;background:var(--brand);border:none;color:white;padding:10px 14px;border-radius:10px;cursor:pointer">Invia</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="recensioni" hidden>
+      <div class="card">
+        <h3>Recensioni</h3>
+        <p class="muted">Esempio statico. Possiamo aggiungere salvataggio locale (LocalStorage) in seguito.</p>
+        <ul id="reviews" style="margin:0;padding-left:16px">
+          <li>Pizzeria Bella Napoli — “Impasto top” (★ 5)</li>
+          <li>Emporio Digitale — “Staff preparato” (★ 4)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="mappa" hidden>
+      <div class="card">
+        <h3>Mappa</h3>
+        <p class="muted">In una seconda fase integriamo una mappa web (es. Leaflet/OSM o Google Maps JS API).</p>
+        <p>Per ora un link utile: <a href="https://www.openstreetmap.org/#map=14/41.487/13.831" target="_blank" rel="noopener">Apri mappa di Cassino</a></p>
+      </div>
+    </section>
+
+    <footer>© CassinoSignal — PWA di prova</footer>
+  </main>
+
+  <button id="btnInstall" class="install">Installa app</button>
+
+  <script>
+    // Tabs
+    const tabs = document.querySelectorAll('.tabs button');
+    const sections = [...document.querySelectorAll('main section')];
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        sections.forEach(s => s.hidden = (s.id !== btn.dataset.tab));
+      });
+    });
+
+    // Geolocalizzazione
+    const geoBtn = document.getElementById('geo');
+    const coordsEl = document.getElementById('coords');
+    if (geoBtn) {
+      geoBtn.addEventListener('click', async () => {
+        if (!('geolocation' in navigator)) {
+          coordsEl.textContent = 'Posizione non supportata dal browser';
+          return;
+        }
+        coordsEl.textContent = 'Richiesta posizione...';
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const { latitude, longitude } = pos.coords;
+            coordsEl.textContent = `Posizione: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          },
+          err => {
+            coordsEl.textContent = 'Impossibile ottenere la posizione (' + err.message + ')';
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      });
+    }
+
+    // Simulazione invio
+    const form = document.getElementById('report-form');
+    if (form) {
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const msg = document.getElementById('msg').value.trim();
+        if (!msg) { alert('Scrivi un messaggio.'); return; }
+        alert('Segnalazione inviata!\n\n' + msg);
+        form.reset();
+        coordsEl.textContent = 'Posizione: non ottenuta';
+      });
+    }
+
+    // PWA: prompt install
+    let deferredPrompt;
+    const btnInstall = document.getElementById('btnInstall');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.style.display = 'inline-block';
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      btnInstall.style.display = 'none';
+      console.log('Install outcome:', outcome);
+    });
+
+    // Registra service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
