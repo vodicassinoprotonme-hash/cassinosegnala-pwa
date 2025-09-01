@@ -1,4 +1,4 @@
-const CACHE = 'cassinosignal-cache-v2';
+const CACHE = 'cassinosignal-cache-v3';
 const ASSETS = [
   './',
   './index.html',
