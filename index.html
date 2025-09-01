@@ -149,13 +149,13 @@
   <button id="btnInstall" class="install">Installa app</button>
 
   <script>
-    /* ========== Utility storage ========== */
+    /* ===== Storage helper ===== */
     const LS = {
       get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
       set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
     };
 
-    /* ========== Dati iniziali ========== */
+    /* ===== Seed data ===== */
     const seedMangiare = [
       { id:'m1', name:'Pizzeria Bella Napoli', stars:4.5, desc:'Pizza napoletana con forno a legna.', lat:41.4890, lng:13.8330 },
       { id:'m2', name:'Trattoria Da Gino',     stars:4.2, desc:'Cucina ciociara, pasta fresca.',    lat:41.4875, lng:13.8302 }
@@ -174,7 +174,7 @@
     const reports = LS.get('reports', []);
     const reviews = LS.get('reviews', seedReviews);
 
-    /* ========== Tabs ========== */
+    /* ===== Tabs ===== */
     const tabs = document.querySelectorAll('.tabs button');
     const sections = [...document.querySelectorAll('main section')];
     tabs.forEach(btn => {
@@ -182,12 +182,15 @@
         tabs.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         sections.forEach(s => s.hidden = (s.id !== btn.dataset.tab));
-        if (btn.dataset.tab === 'mappa') setTimeout(initMap, 50);
+        if (btn.dataset.tab === 'mappa') {
+          // aspetta che il DOM mostri la sezione, poi (re)inizializza
+          setTimeout(() => ensureMap(), 50);
+        }
         if (btn.dataset.tab === 'recensioni') renderReviews();
       });
     });
 
-    /* ========== Render liste mangiare/acquistare ========== */
+    /* ===== Render liste ===== */
     function cardItem(item){
       return `
         <div class="card">
@@ -202,7 +205,7 @@
     renderList('mangiare-list', mangiare);
     renderList('acquistare-list', acquistare);
 
-    /* ========== Segnalazioni ========== */
+    /* ===== Segnalazioni ===== */
     const geoBtn = document.getElementById('geo');
     const coordsEl = document.getElementById('coords');
     let currentCoords = null;
@@ -247,6 +250,7 @@
       currentCoords = null;
       coordsEl.textContent = 'Posizione: non ottenuta';
       renderReports();
+      if (map) drawMarkers();
       alert('Segnalazione inviata!');
     });
 
@@ -278,7 +282,7 @@
     }
     renderReports();
 
-    /* ========== Recensioni ========== */
+    /* ===== Recensioni ===== */
     document.getElementById('review-form')?.addEventListener('submit', (e)=>{
       e.preventDefault();
       const name = document.getElementById('rev-name').value.trim();
@@ -313,21 +317,33 @@
     document.getElementById('rev-sort')?.addEventListener('change', renderReviews);
     renderReviews();
 
-    /* ========== Mappa Leaflet ========== */
+    /* ===== Mappa Leaflet ===== */
     let map, markersLayer;
-    function initMap(){
-      if (map) { map.invalidateSize(); drawMarkers(); return; }
-      map = L.map('map').setView([41.487, 13.831], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-      markersLayer = L.layerGroup().addTo(map);
-      drawMarkers();
+    function ensureMap(){
+      const section = document.getElementById('mappa');
+      if (section.hidden) return; // ancora non visibile
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+
+      if (!map) {
+        console.log('Inizializzo Leaflet…');
+        map = L.map('map', { zoomControl: true }).setView([41.487, 13.831], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        markersLayer = L.layerGroup().addTo(map);
+        drawMarkers();
+      } else {
+        console.log('Aggiorno dimensioni/marker…');
+        map.invalidateSize();
+        drawMarkers();
+      }
     }
 
     function drawMarkers(){
       if (!markersLayer) return;
+
       markersLayer.clearLayers();
 
       // Mangiare (azzurro)
@@ -349,7 +365,7 @@
       });
     }
 
-    /* ========== PWA install prompt ========== */
+    /* ===== Install prompt PWA ===== */
     let deferredPrompt;
     const btnInstall = document.getElementById('btnInstall');
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -375,5 +391,3 @@
 </body>
 </html>
 
-</body>
-</html>
