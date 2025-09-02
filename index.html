@@ -135,8 +135,9 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    // === URL del tuo Apps Script (deploy esistente) ===
-    const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbY3qHptG022eYRt6vLyQs6aVH_s-w7IlI8GMb7kseq_3i507PzWuco1MXXIXPh-2ewewg/exec";
+    // === URL del tuo Apps Script (nuovo deploy) ===
+    const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbx-zpXhyWfvrnmWiM6IPm69zdWFlDlO7rGoJ6jr6Mps9uO9L_DojpaocXw6vE7AY02nhA/exec";
+
     const form  = document.getElementById('reportForm');
     const btn   = document.getElementById('sendBtn');
     const toast = document.getElementById('toast');
@@ -173,9 +174,6 @@
       Array.from(files).forEach(f => fd.append('files[]', f, f.name));
       // cartella secondaria opzionale
       fd.append('folder', 'CassinoSegnala');
-
-      // preflight (facoltativo)
-      try { await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'OPTIONS' }); } catch(e){}
 
       const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
       const text = await res.text();
