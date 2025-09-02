@@ -2,446 +2,219 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CassinoSignal</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#0d6efd" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-  <!-- Leaflet (mappa) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
-  <script
-    defer
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-
-  <!-- EmailJS -->
-  <script defer src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CassinoSegnala • Voci di Cassino</title>
+  <meta name="description" content="Invia segnalazioni (anche anonime) a Voci di Cassino. Allega foto e video: i file vengono salvati su Drive e i link arrivano via email." />
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
-    :root { --brand:#0d6efd; --bg:#0b1220; --card:#121a2b; --text:#e9eefc; --muted:#b8c3e0; }
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    header{position:sticky;top:0;background:var(--card);display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #223; z-index: 10;}
-    header img{width:28px;height:28px;border-radius:6px}
-    header h1{font-size:18px;margin:0}
-    main{padding:16px; max-width: 900px; margin: 0 auto;}
-    .tabs{display:flex;gap:8px;margin:8px 0 16px;position:sticky;top:56px; z-index: 9; background:transparent}
-    .tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid #2a3550;background:#162038;color:var(--text);cursor:pointer}
-    .tabs button.active{background:var(--brand);border-color:var(--brand)}
-    .row{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width: 640px){ .row{grid-template-columns:1fr 1fr} }
-    .card{background:var(--card);border:1px solid #1f2942;border-radius:14px;padding:14px}
-    .muted{color:var(--muted);font-size:14px}
-    .btn{background:var(--brand);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer}
-    .btn.ghost{background:#162038;border:1px solid #2a3550;color:var(--text)}
-    .field{width:100%;border-radius:10px;padding:10px;background:#0f1626;color:var(--text);border:1px solid #24304a}
-    .install{position:fixed;right:12px;bottom:12px;background:var(--brand);border:none;color:white;padding:10px 14px;border-radius:12px;box-shadow:0 6px 18px rgba(13,110,253,.35);display:none; z-index: 11;}
-    /* Altezza mappa ottimizzata per mobile */
-    #map{
-      height: 65dvh;
-      min-height: 360px;
-      border-radius: 14px;
-      border:1px solid #1f2942
+    :root{ --bg:#0b1020; --card:#0f172a; --muted:#8ea0b6; --txt:#e2e8f0; --brand:#22c55e; --brand2:#16a34a; --danger:#ef4444; }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:linear-gradient(180deg,#0b1020,#0c1227 60%,#0b1020);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    .wrap{max-width:940px;margin:auto;padding:24px}
+    header{display:flex;align-items:center;gap:14px;margin:6px 0 18px}
+    .logo{width:44px;height:44px;border-radius:12px;background:#111 url('icons/icon-192.png') center/cover no-repeat;flex:0 0 44px}
+    h1{font-size:1.35rem;margin:0}
+    .sub{color:var(--muted);font-size:.95rem;margin:2px 0 0}
+    .card{background:var(--card);border:1px solid rgba(148,163,184,.15);border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(2,6,23,.45)}
+    form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .full{grid-column:1/-1}
+    label{display:block;font-weight:600;margin:6px 0 6px}
+    input,select,textarea{
+      width:100%;background:#0a0f1e;border:1px solid rgba(148,163,184,.25);color:var(--txt);
+      border-radius:12px;padding:12px 14px;font-size:1rem;outline:none
     }
-    .badge{display:inline-block;background:#203055;border:1px solid #2d3a60;color:#cfe0ff;padding:2px 8px;border-radius:999px;font-size:12px}
-    ul{margin:0;padding-left:18px}
-    footer{padding:30px 0 60px;text-align:center;color:#92a0c7;font-size:12px}
-    a{color:#9ec1ff}
+    input::file-selector-button{border:0;border-radius:10px;padding:8px 10px;margin-right:10px;background:#111;color:#e5e7eb}
+    textarea{min-height:140px;resize:vertical}
+    .row{display:flex;gap:12px;align-items:center}
+    .hint{color:var(--muted);font-size:.9rem}
+    .muted{color:var(--muted)}
+    .switch{display:flex;gap:8px;align-items:center}
+    .btn{
+      appearance:none;border:0;border-radius:14px;padding:12px 18px;font-weight:700;cursor:pointer;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));color:#04120a;box-shadow:0 10px 20px rgba(34,197,94,.25)
+    }
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    .btn.secondary{background:#111;color:#e5e7eb;box-shadow:none;border:1px solid rgba(148,163,184,.2)}
+    .toast{
+      position:fixed;right:16px;bottom:16px;background:#0f172a;border:1px solid rgba(148,163,184,.25);
+      color:var(--txt);padding:14px 16px;border-radius:14px;box-shadow:0 10px 24px rgba(2,6,23,.45);
+      transform:translateY(20px);opacity:0;transition:.25s
+    }
+    .toast.show{transform:translateY(0);opacity:1}
+    footer{margin:22px 6px 4px;color:var(--muted);font-size:.9rem;text-align:center}
+    @media (max-width:720px){form{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <header>
-    <img src="icons/icon-192.png" alt="logo" />
-    <h1>CassinoSignal</h1>
-  </header>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Voci di Cassino — CassinoSegnala</h1>
+        <p class="sub">Invia una segnalazione (anche anonima). Puoi allegare foto o video. 💬</p>
+      </div>
+    </header>
 
-  <main>
-    <div class="tabs">
-      <button data-tab="mangiare" class="active">Dove Mangiare</button>
-      <button data-tab="acquistare">Dove Acquistare</button>
-      <button data-tab="segnalazioni">Segnalazioni</button>
-      <button data-tab="recensioni">Recensioni</button>
-      <button data-tab="mappa">Mappa</button>
+    <div class="card">
+      <form id="reportForm">
+        <div class="full">
+          <label for="categoria">Categoria</label>
+          <select id="categoria" name="categoria" required>
+            <option value="" disabled selected>Seleziona…</option>
+            <option>Decoro urbano</option>
+            <option>Traffico/Strade</option>
+            <option>Sicurezza</option>
+            <option>Illuminazione</option>
+            <option>Ambiente/Rifiuti</option>
+            <option>Altro</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="nome">Nome (opzionale)</label>
+          <input id="nome" name="nome" placeholder="Mario R. (facoltativo)" />
+        </div>
+        <div class="switch">
+          <input type="checkbox" id="anonimo" name="anonimo" />
+          <label for="anonimo" class="muted">Invia come anonimo</label>
+        </div>
+
+        <div>
+          <label for="email">Email (opzionale)</label>
+          <input id="email" name="email" type="email" placeholder="nome@email.com" />
+        </div>
+        <div>
+          <label for="telefono">Telefono (opzionale)</label>
+          <input id="telefono" name="telefono" type="tel" placeholder="333 1234567" />
+        </div>
+
+        <div class="full">
+          <label for="oggetto">Oggetto</label>
+          <input id="oggetto" name="oggetto" required placeholder="Titolo breve della segnalazione" />
+        </div>
+
+        <div class="full">
+          <label for="descrizione">Descrizione</label>
+          <textarea id="descrizione" name="descrizione" required placeholder="Spiega cosa succede, dove e quando."></textarea>
+          <p class="hint">Più dettagli = più facile intervenire. Indica via, orario, riferimenti utili.</p>
+        </div>
+
+        <div class="full">
+          <label for="allegati">Allega media (foto/video)</label>
+          <input id="allegati" name="allegati" type="file" multiple accept="image/*,video/*" />
+          <p class="hint">I file vengono caricati su Drive e nella mail riceverai i link.</p>
+        </div>
+
+        <div class="row full">
+          <input type="checkbox" id="privacy" required />
+          <label for="privacy">Ho letto l’informativa e acconsento al trattamento dei dati ai soli fini della segnalazione.</label>
+        </div>
+
+        <input type="hidden" name="pagina" value="cassinosignal-pwa" />
+        <input type="hidden" name="timestamp" id="tsField" />
+      </form>
+
+      <div class="row full" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn secondary" type="reset" form="reportForm">Pulisci</button>
+        <button class="btn" id="sendBtn" type="submit" form="reportForm">Invia segnalazione</button>
+      </div>
+
+      <p class="hint" style="margin-top:12px">Se hai problemi, puoi usare anche il modulo alternativo:
+        <a class="muted" href="https://forms.gle/ZbsHFHWLacpQedK77" target="_blank" rel="noopener">Modulo Google</a>.
+      </p>
     </div>
 
-    <!-- Mangiare -->
-    <section id="mangiare">
-      <div class="row" id="mangiare-list"></div>
-    </section>
+    <footer>
+      © Voci di Cassino • PWA. L’invio email usa EmailJS; i file sono caricati su Google Drive tramite Apps Script.
+    </footer>
+  </div>
 
-    <!-- Acquistare -->
-    <section id="acquistare" hidden>
-      <div class="row" id="acquistare-list"></div>
-    </section>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <!-- Segnalazioni -->
-    <section id="segnalazioni" hidden>
-      <div class="card">
-        <h3>Invia segnalazione</h3>
-        <p class="muted">Scrivi un messaggio, opzionalmente allega una foto e aggiungi la tua posizione.</p>
-        <form id="report-form" enctype="multipart/form-data">
-          <div class="row">
-            <input id="name" name="name" class="field" placeholder="Nome" required />
-            <input id="reply_to" name="reply_to" class="field" type="email" placeholder="Email" required />
-          </div>
-          <textarea id="msg" name="message" rows="4" class="field" placeholder="Descrivi la segnalazione..." required></textarea>
-          <div class="row" style="align-items:end">
-            <div>
-              <label class="muted">Latitudine</label>
-              <input id="lat" name="lat" class="field" placeholder="—" readonly />
-            </div>
-            <div>
-              <label class="muted">Longitudine</label>
-              <input id="lng" name="lng" class="field" placeholder="—" readonly />
-            </div>
-          </div>
-
-          <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
-            <input type="file" id="photo" name="my_file" accept="image/*" class="field" style="max-width:320px" />
-            <button type="button" id="geo" class="btn ghost">📍 Ottieni posizione</button>
-          </div>
-          <div id="coords" class="muted">Posizione: non ottenuta</div>
-
-          <button type="submit" class="btn" style="margin-top:10px">✉️ Invia segnalazione</button>
-          <div id="msg-ok"  class="muted" style="display:none;margin-top:8px;color:#3fdc86">✅ Inviata!</div>
-          <div id="msg-err" class="muted" style="display:none;margin-top:8px;color:#ff7b7b">❌ Errore. Riprova.</div>
-        </form>
-      </div>
-
-      <div class="card" style="margin-top:12px">
-        <h3>Segnalazioni inviate</h3>
-        <div id="reports-list" class="row"></div>
-      </div>
-    </section>
-
-    <!-- Recensioni -->
-    <section id="recensioni" hidden>
-      <div class="card">
-        <h3>Aggiungi recensione</h3>
-        <form id="review-form" style="display:grid;gap:8px">
-          <input id="rev-name" class="field" placeholder="Nome locale/negozio" />
-          <select id="rev-type" class="field">
-            <option value="mangiare">Dove Mangiare</option>
-            <option value="acquistare">Dove Acquistare</option>
-          </select>
-          <input id="rev-stars" class="field" type="number" min="1" max="5" step="0.5" placeholder="Stelle (1-5)" />
-          <textarea id="rev-text" rows="3" class="field" placeholder="Scrivi la recensione..."></textarea>
-          <button class="btn" type="submit">Salva recensione</button>
-        </form>
-      </div>
-
-      <div class="card" style="margin-top:12px">
-        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-          <h3 style="margin:0">Recensioni</h3>
-          <div>
-            <label class="muted">Ordina per: </label>
-            <select id="rev-sort" class="field" style="width:auto;display:inline-block">
-              <option value="desc">Stelle ↓</option>
-              <option value="asc">Stelle ↑</option>
-              <option value="recent">Più recenti</option>
-            </select>
-          </div>
-        </div>
-        <div id="reviews-list" class="row" style="margin-top:10px"></div>
-      </div>
-    </section>
-
-    <!-- Mappa -->
-    <section id="mappa" hidden>
-      <div id="map" class="card"></div>
-      <div class="card" style="margin-top:12px">
-        <span class="badge">Legenda</span>
-        <ul>
-          <li><strong>Azzurro</strong>: Dove Mangiare</li>
-          <li><strong>Verde</strong>: Dove Acquistare</li>
-          <li><strong>Rosso</strong>: Segnalazioni</li>
-        </ul>
-      </div>
-    </section>
-
-    <footer>© CassinoSignal — PWA</footer>
-  </main>
-
-  <button id="btnInstall" class="install">Installa app</button>
-
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
-    // ====== EmailJS init (usa i TUOI ID) ======
-    const SERVICE_ID  = 'service_o0zjt3a';
-    const TEMPLATE_ID = 'template_w0dg37s';
-    const PUBLIC_KEY  = '6VxVl_B4TIrK1YGJA';
+    // === CONFIG IMPOSTATA ===
+    const EMAILJS_PUBLIC_KEY = "6vXVI_B4TIrK1YGjA";
+    const EMAILJS_SERVICE_ID  = "service_vocidicassino";   // cambia se il tuo è diverso
+    const EMAILJS_TEMPLATE_ID = "template_contact_us";     // cambia se il tuo è diverso
+    const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbY3qHptG022eYRt6vLyQs6aVH_s-w7IlI8GMb7kseq_3i507PzWuco1MXXIXPh-2ewewg/exec";
 
-    window.addEventListener('load', () => {
-      if (window.emailjs && !emailjs.__inited) { emailjs.init(PUBLIC_KEY); emailjs.__inited = true; }
-    });
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
-    /* ===== Storage helper ===== */
-    const LS = {
-      get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-      set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
-    };
+    const form   = document.getElementById('reportForm');
+    const btn    = document.getElementById('sendBtn');
+    const toast  = document.getElementById('toast');
+    const ts     = document.getElementById('tsField');
 
-    /* ===== Seed data ===== */
-    const seedMangiare = [
-      { id:'m1', name:'Pizzeria Bella Napoli', stars:4.5, desc:'Pizza napoletana con forno a legna.', lat:41.4890, lng:13.8330 },
-      { id:'m2', name:'Trattoria Da Gino',     stars:4.2, desc:'Cucina ciociara, pasta fresca.',    lat:41.4875, lng:13.8302 }
-    ];
-    const seedAcquistare = [
-      { id:'a1', name:'Emporio Digitale',  stars:4.3, desc:'Elettronica e accessori.', lat:41.4865, lng:13.8294 },
-      { id:'a2', name:'Boutique Cassino',  stars:4.1, desc:'Abbigliamento e accessori.', lat:41.4881, lng:13.8321 }
-    ];
-    const seedReviews = [
-      { id:'r1', type:'mangiare', name:'Pizzeria Bella Napoli', stars:5, text:'Impasto top', ts: Date.now()-86400000 },
-      { id:'r2', type:'acquistare', name:'Emporio Digitale', stars:4, text:'Staff preparato', ts: Date.now()-43200000 }
-    ];
+    const linksField = document.createElement('input');
+    linksField.type = 'hidden';
+    linksField.name = 'links_allegati';
+    form.appendChild(linksField);
 
-    const mangiare = LS.get('mangiare', seedMangiare);
-    const acquistare = LS.get('acquistare', seedAcquistare);
-    const reports = LS.get('reports', []);
-    const reviews = LS.get('reviews', seedReviews);
-
-    /* ===== Tabs ===== */
-    const tabs = document.querySelectorAll('.tabs button');
-    const sections = [...document.querySelectorAll('main section')];
-    tabs.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabs.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        sections.forEach(s => s.hidden = (s.id !== btn.dataset.tab));
-        if (btn.dataset.tab === 'mappa') {
-          setTimeout(() => {
-            ensureMap();
-            document.getElementById('map')?.scrollIntoView({behavior:'smooth', block:'start'});
-          }, 50);
-        }
-        if (btn.dataset.tab === 'recensioni') renderReviews();
-      });
-    });
-
-    /* ===== Render liste ===== */
-    function cardItem(item){
-      return `
-        <div class="card">
-          <h3 style="margin:0">${item.name} <span class="muted">— ★ ${item.stars}</span></h3>
-          <p class="muted" style="margin:6px 0 0">${item.desc ?? ''}</p>
-        </div>`;
+    function showToast(msg, ok=true){
+      toast.textContent = msg;
+      toast.style.borderColor = ok ? 'rgba(34,197,94,.4)' : 'rgba(239,68,68,.5)';
+      toast.classList.add('show');
+      clearTimeout(window.__t);
+      window.__t = setTimeout(()=>toast.classList.remove('show'), 4200);
     }
-    function renderList(id, data){
-      const el = document.getElementById(id);
-      el.innerHTML = data.map(cardItem).join('');
+
+    function applyAnonymity(){
+      const anon = document.getElementById('anonimo').checked;
+      if(anon){ form.nome.value=''; form.email.value=''; form.telefono.value=''; }
     }
-    renderList('mangiare-list', mangiare);
-    renderList('acquistare-list', acquistare);
 
-    /* ===== Segnalazioni (posizione) ===== */
-    const geoBtn = document.getElementById('geo');
-    const coordsEl = document.getElementById('coords');
-    const latEl = document.getElementById('lat');
-    const lngEl = document.getElementById('lng');
-    let currentCoords = null;
+    async function uploadFilesToAppsScript(files){
+      if(!files || files.length === 0) return [];
+      const fd = new FormData();
+      Array.from(files).forEach(f => fd.append('files[]', f, f.name));
+      fd.append('folder', 'CassinoSegnala');
+      const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
+      if(!res.ok) throw new Error('Upload fallito');
+      const data = await res.json().catch(()=> ({}));
+      const urls = (data.files?.map(f=>f.url) || data.urls || []).filter(Boolean);
+      return urls;
+    }
 
-    geoBtn?.addEventListener('click', () => {
-      if (!('geolocation' in navigator)) { coordsEl.textContent = 'Posizione non supportata'; return; }
-      coordsEl.textContent = 'Richiesta posizione...';
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const { latitude, longitude } = pos.coords;
-          currentCoords = { lat: latitude, lng: longitude };
-          coordsEl.textContent = `Posizione: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-          latEl.value = latitude.toFixed(6);
-          lngEl.value = longitude.toFixed(6);
-        },
-        err => { coordsEl.textContent = 'Errore posizione: ' + err.message; },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
-
-    /* ===== Segnalazioni (invio + salvataggio) ===== */
-    const reportForm = document.getElementById('report-form');
-    const okMsg = document.getElementById('msg-ok');
-    const errMsg = document.getElementById('msg-err');
-
-    reportForm?.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      okMsg.style.display = 'none'; errMsg.style.display = 'none';
+      applyAnonymity();
+      ts.value = new Date().toISOString();
 
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('reply_to').value.trim();
-      const msg = document.getElementById('msg').value.trim();
-      const file = document.getElementById('photo').files[0];
+      if(!form.categoria.value || !form.oggetto.value.trim() || !form.descrizione.value.trim() || !document.getElementById('privacy').checked){
+        showToast('Compila i campi obbligatori.', false);
+        return;
+      }
 
-      if (!name || !email || !msg){ errMsg.textContent='Compila tutti i campi.'; errMsg.style.display='block'; return; }
+      btn.disabled = true;
+      btn.textContent = 'Carico allegati…';
 
-      // Salva localmente
-      let photoData = null;
-      if (file) photoData = await fileToDataURL(file);
-      const report = {
-        id: 'rep_'+Date.now(),
-        name, email, msg, photoData,
-        lat: latEl.value ? parseFloat(latEl.value) : null,
-        lng: lngEl.value ? parseFloat(lngEl.value) : null,
-        ts: Date.now()
-      };
-      reports.push(report);
-      LS.set('reports', reports);
-      renderReports();
-      if (map) drawMarkers();
+      try{
+        const fileInput = document.getElementById('allegati');
+        const links = await uploadFilesToAppsScript(fileInput.files);
+        linksField.value = links.join('\n');
 
-      // Invio EmailJS tramite sendForm (allega il file)
-      try {
-        await emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, '#report-form');
-        okMsg.style.display = 'block';
-        reportForm.reset();
-        currentCoords = null;
-        coordsEl.textContent = 'Posizione: non ottenuta';
-      } catch (err) {
-        console.warn(err);
-        errMsg.textContent = 'Errore invio email. Riprova tra poco.';
-        errMsg.style.display = 'block';
+        btn.textContent = 'Invio email…';
+        await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form);
+
+        form.reset();
+        linksField.value = '';
+        showToast('Segnalazione inviata! ✅');
+      }catch(err){
+        console.error(err);
+        showToast('Errore: controlla connessione/ID EmailJS o endpoint Apps Script.', false);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = 'Invia segnalazione';
       }
     });
 
-    function fileToDataURL(file){
-      return new Promise((resolve,reject)=>{
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
-    }
-
-    function renderReports(){
-      const el = document.getElementById('reports-list');
-      if (!el) return;
-      if (!reports.length){ el.innerHTML = '<div class="muted">Nessuna segnalazione inviata.</div>'; return; }
-      el.innerHTML = reports.slice().reverse().map(r => `
-        <div class="card">
-          <div style="display:flex;gap:12px;align-items:flex-start">
-            ${r.photoData ? `<img src="${r.photoData}" alt="foto" style="width:92px;height:92px;object-fit:cover;border-radius:10px;border:1px solid #24304a" />` : ''}
-            <div>
-              <div class="badge">Segnalazione</div>
-              <p style="margin:6px 0 4px"><b>${r.name}</b> — ${r.email}</p>
-              <p style="margin:4px 0">${r.msg}</p>
-              <div class="muted">${new Date(r.ts).toLocaleString()}${(r.lat&&r.lng)?` — ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`:''}</div>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
-    renderReports();
-
-    /* ===== Recensioni ===== */
-    document.getElementById('review-form')?.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const name = document.getElementById('rev-name').value.trim();
-      const type = document.getElementById('rev-type').value;
-      const stars = parseFloat(document.getElementById('rev-stars').value);
-      const text = document.getElementById('rev-text').value.trim();
-      if (!name || !stars || stars<1 || stars>5){ alert('Nome e stelle (1-5) obbligatori.'); return; }
-      reviews.push({ id:'rev_'+Date.now(), type, name, stars, text, ts: Date.now() });
-      LS.set('reviews', reviews);
-      (e.target).reset();
-      renderReviews();
-      alert('Recensione salvata!');
-    });
-
-    function renderReviews(){
-      const list = document.getElementById('reviews-list');
-      const sort = document.getElementById('rev-sort')?.value ?? 'desc';
-      let data = reviews.slice();
-      if (sort==='desc') data.sort((a,b)=>b.stars-a.stars);
-      if (sort==='asc')  data.sort((a,b)=>a.stars-b.stars);
-      if (sort==='recent') data.sort((a,b)=>b.ts-a.ts);
-
-      list.innerHTML = data.map(r => `
-        <div class="card">
-          <div class="badge">${r.type==='mangiare'?'Mangiare':'Acquistare'}</div>
-          <h3 style="margin:6px 0">${r.name} — <span class="muted">★ ${r.stars}</span></h3>
-          ${r.text ? `<p class="muted" style="margin:4px 0">${r.text}</p>`:''}
-          <div class="muted">${new Date(r.ts).toLocaleString()}</div>
-        </div>
-      `).join('');
-    }
-    document.getElementById('rev-sort')?.addEventListener('change', renderReviews);
-    renderReviews();
-
-    /* ===== Mappa Leaflet ===== */
-    let map, markersLayer;
-    function ensureMap(){
-      const section = document.getElementById('mappa');
-      if (section.hidden) return;
-      const mapEl = document.getElementById('map');
-      if (!mapEl) return;
-
-      if (!map) {
-        map = L.map('map', { zoomControl: true }).setView([41.487, 13.831], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-        markersLayer = L.layerGroup().addTo(map);
-        drawMarkers();
-      } else {
-        map.invalidateSize();
-        drawMarkers();
-      }
-    }
-
-    function drawMarkers(){
-      if (!markersLayer) return;
-      markersLayer.clearLayers();
-
-      // Mangiare (azzurro)
-      mangiare.forEach(p=>{
-        L.circleMarker([p.lat,p.lng], {radius:8, color:'#4ea3ff'}).addTo(markersLayer)
-          .bindPopup(`<b>${p.name}</b><br/>★ ${p.stars}<br/><span class="muted">${p.desc??''}</span>`);
-      });
-
-      // Acquistare (verde)
-      acquistare.forEach(p=>{
-        L.circleMarker([p.lat,p.lng], {radius:8, color:'#19c37d'}).addTo(markersLayer)
-          .bindPopup(`<b>${p.name}</b><br/>★ ${p.stars}<br/><span class="muted">${p.desc??''}</span>`);
-      });
-
-      // Segnalazioni (rosso)
-      reports.forEach(r=>{
-        if (r.lat && r.lng) {
-          L.circleMarker([r.lat,r.lng], {radius:8, color:'#ff4d4f'}).addTo(markersLayer)
-            .bindPopup(`<b>Segnalazione</b><br/>${new Date(r.ts).toLocaleString()}<br/><span class="muted">${r.msg}</span>`);
-        }
-      });
-    }
-
-    /* ===== Install prompt PWA ===== */
-    let deferredPrompt;
-    const btnInstall = document.getElementById('btnInstall');
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      btnInstall.style.display = 'inline-block';
-    });
-    btnInstall.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      btnInstall.style.display = 'none';
-    });
-
-    // Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js');
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
       });
     }
   </script>
