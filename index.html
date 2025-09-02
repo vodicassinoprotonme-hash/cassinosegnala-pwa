@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CassinoSegnala • Voci di Cassino</title>
-  <meta name="description" content="Invia segnalazioni (anche anonime) a Voci di Cassino. Allega foto e video: i file vengono salvati su Drive e i link arrivano via email." />
+  <meta name="description" content="Invia segnalazioni (anche anonime) a Voci di Cassino. I file vengono caricati su Drive e ti arriva una mail con tutti i dettagli.">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
@@ -104,7 +104,7 @@
 
         <div class="full">
           <label for="allegati">Allega media (foto/video)</label>
-          <input id="allegati" name="allegati" type="file" multiple accept="image/*,video/*" />
+          <input id="allegati" type="file" multiple accept="image/*,video/*" />
           <p class="hint">I file vengono caricati su Drive e nella mail riceverai i link.</p>
         </div>
 
@@ -128,38 +128,27 @@
     </div>
 
     <footer>
-      © Voci di Cassino • PWA. L’invio email usa EmailJS; i file sono caricati su Google Drive tramite Apps Script.
+      © Voci di Cassino • PWA. I file sono caricati su Google Drive e la mail viene inviata automaticamente dal server.
     </footer>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
-    // === CONFIG IMPOSTATA ===
-    const EMAILJS_PUBLIC_KEY = "6vXVI_B4TIrK1YGjA";
-    const EMAILJS_SERVICE_ID  = "service_vocidicassino";   // cambia se il tuo è diverso
-    const EMAILJS_TEMPLATE_ID = "template_contact_us";     // cambia se il tuo è diverso
+    // === URL del tuo Apps Script (deploy esistente) ===
     const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbY3qHptG022eYRt6vLyQs6aVH_s-w7IlI8GMb7kseq_3i507PzWuco1MXXIXPh-2ewewg/exec";
 
-    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-
-    const form   = document.getElementById('reportForm');
-    const btn    = document.getElementById('sendBtn');
-    const toast  = document.getElementById('toast');
-    const ts     = document.getElementById('tsField');
-
-    const linksField = document.createElement('input');
-    linksField.type = 'hidden';
-    linksField.name = 'links_allegati';
-    form.appendChild(linksField);
+    const form  = document.getElementById('reportForm');
+    const btn   = document.getElementById('sendBtn');
+    const toast = document.getElementById('toast');
+    const ts    = document.getElementById('tsField');
 
     function showToast(msg, ok=true){
       toast.textContent = msg;
       toast.style.borderColor = ok ? 'rgba(34,197,94,.4)' : 'rgba(239,68,68,.5)';
       toast.classList.add('show');
       clearTimeout(window.__t);
-      window.__t = setTimeout(()=>toast.classList.remove('show'), 4200);
+      window.__t = setTimeout(()=>toast.classList.remove('show'), 5000);
     }
 
     function applyAnonymity(){
@@ -167,16 +156,36 @@
       if(anon){ form.nome.value=''; form.email.value=''; form.telefono.value=''; }
     }
 
-    async function uploadFilesToAppsScript(files){
-      if(!files || files.length === 0) return [];
+    async function sendToServer(){
       const fd = new FormData();
+      // campi testuali
+      fd.append('categoria', form.categoria.value);
+      fd.append('oggetto', form.oggetto.value);
+      fd.append('descrizione', form.descrizione.value);
+      fd.append('nome', form.nome.value || '');
+      fd.append('email', form.email.value || '');
+      fd.append('telefono', form.telefono.value || '');
+      fd.append('anonimo', document.getElementById('anonimo').checked ? 'si' : 'no');
+      fd.append('pagina', 'cassinosignal-pwa');
+      fd.append('timestamp', new Date().toISOString());
+
+      // file (chiave files[] per compatibilità con lo script)
+      const files = document.getElementById('allegati').files;
       Array.from(files).forEach(f => fd.append('files[]', f, f.name));
+      // cartella secondaria opzionale
       fd.append('folder', 'CassinoSegnala');
+
+      // preflight (facoltativo)
+      try { await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'OPTIONS' }); } catch(e){}
+
       const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
-      if(!res.ok) throw new Error('Upload fallito');
-      const data = await res.json().catch(()=> ({}));
-      const urls = (data.files?.map(f=>f.url) || data.urls || []).filter(Boolean);
-      return urls;
+      const text = await res.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch(e){}
+
+      if(!res.ok || !data.ok){
+        throw new Error(data.error || ('HTTP ' + res.status + ' ' + text));
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -190,28 +199,22 @@
       }
 
       btn.disabled = true;
-      btn.textContent = 'Carico allegati…';
+      btn.textContent = 'Invio in corso…';
 
       try{
-        const fileInput = document.getElementById('allegati');
-        const links = await uploadFilesToAppsScript(fileInput.files);
-        linksField.value = links.join('\n');
-
-        btn.textContent = 'Invio email…';
-        await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form);
-
+        await sendToServer();
         form.reset();
-        linksField.value = '';
         showToast('Segnalazione inviata! ✅');
       }catch(err){
         console.error(err);
-        showToast('Errore: controlla connessione/ID EmailJS o endpoint Apps Script.', false);
+        showToast('Errore di invio: ' + err.message, false);
       }finally{
         btn.disabled = false;
         btn.textContent = 'Invia segnalazione';
       }
     });
 
+    // PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').catch(console.error);
