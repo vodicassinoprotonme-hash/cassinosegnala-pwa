@@ -135,7 +135,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    // === Endpoint Apps Script (TUO NUOVO DEPLOY) ===
     const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxh-zpXhyWfvmmWtM6lPm69dzlWFDlO7rGoGjr6Mps9uO9L_DojpaoecXw6VE7AYO2hhA/exec";
 
     const form  = document.getElementById('reportForm');
@@ -156,7 +155,19 @@
       if(anon){ form.nome.value=''; form.email.value=''; form.telefono.value=''; }
     }
 
-    async function sendToServer(){
+    function fileToBase64(file){
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const base64 = String(r.result).split(',')[1] || '';
+          resolve({ name: file.name, mime: file.type || 'application/octet-stream', data: base64 });
+        };
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function sendFormData(){
       const fd = new FormData();
       fd.append('categoria', form.categoria.value);
       fd.append('oggetto', form.oggetto.value);
@@ -167,20 +178,65 @@
       fd.append('anonimo', document.getElementById('anonimo').checked ? 'si' : 'no');
       fd.append('pagina', 'cassinosignal-pwa');
       fd.append('timestamp', new Date().toISOString());
+      fd.append('folder', 'CassinoSegnala');
 
       const files = document.getElementById('allegati').files;
       Array.from(files).forEach(f => fd.append('files[]', f, f.name));
-      fd.append('folder', 'CassinoSegnala');
 
-      // 1) CORS "normale" (così leggiamo il JSON)
+      const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body: fd });
+      const data = await res.json().catch(()=> ({}));
+      return { res, data, filesCount: (files && files.length) || 0 };
+    }
+
+    async function sendBase64Fallback(){
+      const files = document.getElementById('allegati').files;
+      const arr = await Promise.all(Array.from(files).map(fileToBase64));
+      const payload = {
+        files_b64: arr,
+        extra: {
+          categoria: form.categoria.value,
+          oggetto: form.oggetto.value,
+          descrizione: form.descrizione.value,
+          nome: form.nome.value || '',
+          email: form.email.value || '',
+          telefono: form.telefono.value || '',
+          anonimo: document.getElementById('anonimo').checked ? 'si' : 'no',
+          pagina: 'cassinosignal-pwa',
+          timestamp: new Date().toISOString(),
+          folder: 'CassinoSegnala'
+        }
+      };
+      const res = await fetch(APPS_SCRIPT_UPLOAD_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(()=> ({}));
+      return { res, data, filesCount: files.length };
+    }
+
+    async function sendToServer(){
+      // 1) Prova upload FormData (multipart) e leggi risposta
       try {
-        const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
+        const {res, data, filesCount} = await sendFormData();
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Se ci sono file selezionati ma il server non ne ha visti, passa al fallback base64
+        if (filesCount > 0 && (!data.files || data.files.length === 0)) {
+          const fb = await sendBase64Fallback();
+          if (!fb.res.ok || !fb.data.ok) throw new Error(fb.data.error || ('HTTP ' + fb.res.status));
+          return;
+        }
+        if (!data.ok) throw new Error(data.error || 'Invio non riuscito');
         return;
       } catch (e) {
-        // 2) Fallback: consegna comunque anche se il preflight viene bloccato
-        await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd, mode:'no-cors' });
+        // 2) Estremo fallback: invio best-effort in no-cors (non leggiamo risposta)
+        const fd = new FormData(form);
+        const files = document.getElementById('allegati').files;
+        Array.from(files).forEach(f => fd.append('files[]', f, f.name));
+        fd.append('pagina', 'cassinosignal-pwa');
+        fd.append('timestamp', new Date().toISOString());
+        fd.append('folder', 'CassinoSegnala');
+        await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body: fd, mode:'no-cors' });
       }
     }
 
@@ -218,5 +274,6 @@
   </script>
 </body>
 </html>
+
 
 
