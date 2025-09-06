@@ -1,5 +1,4 @@
-const VERSION = 'v19
-  ';
+const VERSION = 'v19';
 const ASSETS = [
   './',
   './index.html',
