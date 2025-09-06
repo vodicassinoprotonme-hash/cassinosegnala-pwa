@@ -172,9 +172,16 @@
       Array.from(files).forEach(f => fd.append('files[]', f, f.name));
       fd.append('folder', 'CassinoSegnala');
 
-      // PATCH anti-preflight: no-cors (risposta opaca, ma la POST parte)
-      await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd, mode:'no-cors' });
-      // Non possiamo leggere la risposta, ma se non lancia errori la richiesta è stata inviata.
+      // 1) Prova CORS "normale" per leggere l'esito vero
+      try {
+        const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
+        return; // successo
+      } catch (e) {
+        // 2) Fallback: invia comunque anche se il preflight CORS viene bloccato
+        await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd, mode:'no-cors' });
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -193,16 +200,17 @@
       try{
         await sendToServer();
         form.reset();
-        showToast('Segnalazione inviata! Controlla la posta ✅');
+        showToast('Segnalazione inviata! ✅ Controlla la posta.');
       }catch(err){
         console.error(err);
-        showToast('Errore di rete: riprova più tardi.', false);
+        showToast('Errore: ' + err.message, false);
       }finally{
         btn.disabled = false;
         btn.textContent = 'Invia segnalazione';
       }
     });
 
+    // PWA: registra il service worker se presente
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').catch(console.error);
@@ -211,3 +219,4 @@
   </script>
 </body>
 </html>
+
