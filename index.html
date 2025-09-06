@@ -187,8 +187,22 @@
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json().catch(()=> ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (err) {
+        throw new Error('Risposta non valida dal server');
+      }
+
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      if (!data.ok) {
+        throw new Error(data.error || 'Invio non riuscito');
+      }
+
+      return data;
     }
 
     form.addEventListener('submit', async (e) => {
@@ -204,9 +218,9 @@
       btn.textContent = 'Invio in corso…';
 
       try{
-        await sendJSONBase64();
+        const result = await sendJSONBase64();
         form.reset();
-        showToast('Segnalazione inviata! ✅ Controlla la posta.');
+        showToast('Segnalazione inviata! ✅ (' + (result.files?.length || 0) + ' file)');
       }catch(err){
         console.error(err);
         showToast('Errore: ' + err.message, false);
@@ -224,6 +238,7 @@
   </script>
 </body>
 </html>
+
 
 
 
