@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CassinoSegnala • Voci di Cassino</title>
-  <meta name="description" content="Invia segnalazioni (anche anonime) a Voci di Cassino. I file vengono caricati su Drive e ti arriva una mail con tutti i dettagli.">
+  <meta name="description" content="Invia segnalazioni (anche anonime) a Voci di Cassino. I file vengono caricati su Drive e ti arriva una mail con i link.">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
-    :root{ --bg:#0b1020; --card:#0f172a; --muted:#8ea0b6; --txt:#e2e8f0; --brand:#22c55e; --brand2:#16a34a; --danger:#ef4444; }
+    :root{ --bg:#0b1020; --card:#0f172a; --muted:#8ea0b6; --txt:#e2e8f0; --brand:#22c55e; --brand2:#16a34a; }
     *{box-sizing:border-box}
     html,body{margin:0;background:linear-gradient(180deg,#0b1020,#0c1227 60%,#0b1020);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
     .wrap{max-width:940px;margin:auto;padding:24px}
@@ -30,14 +30,12 @@
     textarea{min-height:140px;resize:vertical}
     .row{display:flex;gap:12px;align-items:center}
     .hint{color:var(--muted);font-size:.9rem}
-    .muted{color:var(--muted)}
-    .switch{display:flex;gap:8px;align-items:center}
     .btn{
       appearance:none;border:0;border-radius:14px;padding:12px 18px;font-weight:700;cursor:pointer;
       background:linear-gradient(135deg,var(--brand),var(--brand2));color:#04120a;box-shadow:0 10px 20px rgba(34,197,94,.25)
     }
     .btn[disabled]{opacity:.6;cursor:not-allowed}
-    .btn.secondary{background:#111;color:#e5e7eb;box-shadow:none;border:1px solid rgba(148,163,184,.2)}
+    .btn.secondary{background:#111;color:#e5e7eb;border:1px solid rgba(148,163,184,.2)}
     .toast{
       position:fixed;right:16px;bottom:16px;background:#0f172a;border:1px solid rgba(148,163,184,.25);
       color:var(--txt);padding:14px 16px;border-radius:14px;box-shadow:0 10px 24px rgba(2,6,23,.45);
@@ -77,9 +75,9 @@
           <label for="nome">Nome (opzionale)</label>
           <input id="nome" name="nome" placeholder="Mario R. (facoltativo)" />
         </div>
-        <div class="switch">
+        <div class="row">
           <input type="checkbox" id="anonimo" name="anonimo" />
-          <label for="anonimo" class="muted">Invia come anonimo</label>
+          <label for="anonimo">Invia come anonimo</label>
         </div>
 
         <div>
@@ -140,7 +138,6 @@
     const form  = document.getElementById('reportForm');
     const btn   = document.getElementById('sendBtn');
     const toast = document.getElementById('toast');
-    const ts    = document.getElementById('tsField');
 
     function showToast(msg, ok=true){
       toast.textContent = msg;
@@ -167,28 +164,7 @@
       });
     }
 
-    async function sendFormData(){
-      const fd = new FormData();
-      fd.append('categoria', form.categoria.value);
-      fd.append('oggetto', form.oggetto.value);
-      fd.append('descrizione', form.descrizione.value);
-      fd.append('nome', form.nome.value || '');
-      fd.append('email', form.email.value || '');
-      fd.append('telefono', form.telefono.value || '');
-      fd.append('anonimo', document.getElementById('anonimo').checked ? 'si' : 'no');
-      fd.append('pagina', 'cassinosignal-pwa');
-      fd.append('timestamp', new Date().toISOString());
-      fd.append('folder', 'CassinoSegnala');
-
-      const files = document.getElementById('allegati').files;
-      Array.from(files).forEach(f => fd.append('files[]', f, f.name));
-
-      const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body: fd });
-      const data = await res.json().catch(()=> ({}));
-      return { res, data, filesCount: (files && files.length) || 0 };
-    }
-
-    async function sendBase64Fallback(){
+    async function sendJSONBase64(){
       const files = document.getElementById('allegati').files;
       const arr = await Promise.all(Array.from(files).map(fileToBase64));
       const payload = {
@@ -212,38 +188,12 @@
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(()=> ({}));
-      return { res, data, filesCount: files.length };
-    }
-
-    async function sendToServer(){
-      // 1) Prova upload FormData (multipart) e leggi risposta
-      try {
-        const {res, data, filesCount} = await sendFormData();
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        // Se ci sono file selezionati ma il server non ne ha visti, passa al fallback base64
-        if (filesCount > 0 && (!data.files || data.files.length === 0)) {
-          const fb = await sendBase64Fallback();
-          if (!fb.res.ok || !fb.data.ok) throw new Error(fb.data.error || ('HTTP ' + fb.res.status));
-          return;
-        }
-        if (!data.ok) throw new Error(data.error || 'Invio non riuscito');
-        return;
-      } catch (e) {
-        // 2) Estremo fallback: invio best-effort in no-cors (non leggiamo risposta)
-        const fd = new FormData(form);
-        const files = document.getElementById('allegati').files;
-        Array.from(files).forEach(f => fd.append('files[]', f, f.name));
-        fd.append('pagina', 'cassinosignal-pwa');
-        fd.append('timestamp', new Date().toISOString());
-        fd.append('folder', 'CassinoSegnala');
-        await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body: fd, mode:'no-cors' });
-      }
+      if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       applyAnonymity();
-      ts.value = new Date().toISOString();
 
       if(!form.categoria.value || !form.oggetto.value.trim() || !form.descrizione.value.trim() || !document.getElementById('privacy').checked){
         showToast('Compila i campi obbligatori.', false);
@@ -254,7 +204,7 @@
       btn.textContent = 'Invio in corso…';
 
       try{
-        await sendToServer();
+        await sendJSONBase64();
         form.reset();
         showToast('Segnalazione inviata! ✅ Controlla la posta.');
       }catch(err){
@@ -274,6 +224,7 @@
   </script>
 </body>
 </html>
+
 
 
 
