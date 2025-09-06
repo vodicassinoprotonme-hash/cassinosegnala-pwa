@@ -135,7 +135,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    // === Endpoint Apps Script (tuo deploy) ===
+    // === Endpoint Apps Script (TUO NUOVO DEPLOY) ===
     const APPS_SCRIPT_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxh-zpXhyWfvmmWtM6lPm69dzlWFDlO7rGoGjr6Mps9uO9L_DojpaoecXw6VE7AYO2hhA/exec";
 
     const form  = document.getElementById('reportForm');
@@ -172,14 +172,14 @@
       Array.from(files).forEach(f => fd.append('files[]', f, f.name));
       fd.append('folder', 'CassinoSegnala');
 
-      // 1) Prova CORS "normale" per leggere l'esito vero
+      // 1) CORS "normale" (così leggiamo il JSON)
       try {
         const res = await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd });
         const data = await res.json().catch(()=> ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
-        return; // successo
+        return;
       } catch (e) {
-        // 2) Fallback: invia comunque anche se il preflight CORS viene bloccato
+        // 2) Fallback: consegna comunque anche se il preflight viene bloccato
         await fetch(APPS_SCRIPT_UPLOAD_URL, { method:'POST', body:fd, mode:'no-cors' });
       }
     }
@@ -210,7 +210,6 @@
       }
     });
 
-    // PWA: registra il service worker se presente
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').catch(console.error);
@@ -219,4 +218,5 @@
   </script>
 </body>
 </html>
+
 
