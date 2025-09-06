@@ -1,5 +1,5 @@
 /* CassinoSegnala – Service Worker con cache dinamica + fallback offline */
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE_NAME = `cassinosignal-cache-${VERSION}`;
 
 const CORE_ASSETS = [
